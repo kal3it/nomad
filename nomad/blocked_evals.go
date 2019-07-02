@@ -236,7 +236,7 @@ func (b *BlockedEvals) processBlock(eval *structs.Evaluation, token string) {
 	// System evals are indexed by node and re-processed on utilization changes in
 	// existing nodes
 	if eval.Type == structs.JobTypeSystem {
-		b.setSystemEval(eval, token)
+		b.system.Add(eval, token)
 	}
 
 	// Add the eval to the set of blocked evals whose jobs constraints are
@@ -377,9 +377,10 @@ func (b *BlockedEvals) Untrack(jobID, namespace string) {
 
 	nsID := structs.NewNamespacedID(jobID, namespace)
 
-	if _, ok := b.system.job[nsID]; ok {
-		for _, e := range b.getSystemEvals(nsID) {
-			b.delSystemEval(e)
+	if evals, ok := b.system.JobEvals(nsID); ok {
+		for _, e := range evals {
+			b.system.Del(e)
+			b.stats.TotalBlocked--
 		}
 		return
 	}
@@ -502,22 +503,20 @@ func (b *BlockedEvals) UnblockNode(nodeID string, index uint64) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	evals, ok := b.system.node[nodeID]
+	evals, ok := b.system.NodeEvals(nodeID)
 
 	// Do nothing if not enabled
 	if !b.enabled || !ok || len(evals) == 0 {
 		return
 	}
 
-	queuable := map[*structs.Evaluation]string{}
-
 	// QUESTION is it dangerous to delete this first?
-	for _, wrapped := range evals {
-		b.delSystemEval(wrapped.eval)
-		queuable[wrapped.eval] = wrapped.token
+	for e := range evals {
+		b.system.Del(e)
+		b.stats.TotalBlocked--
 	}
 
-	b.evalBroker.EnqueueAll(queuable)
+	b.evalBroker.EnqueueAll(evals)
 }
 
 // watchCapacity is a long lived function that watches for capacity changes in
