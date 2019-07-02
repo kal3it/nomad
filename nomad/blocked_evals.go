@@ -379,7 +379,7 @@ func (b *BlockedEvals) Untrack(jobID, namespace string) {
 
 	if evals, ok := b.system.JobEvals(nsID); ok {
 		for _, e := range evals {
-			b.system.Del(e)
+			b.system.Remove(e)
 			b.stats.TotalBlocked--
 		}
 		return
@@ -512,7 +512,7 @@ func (b *BlockedEvals) UnblockNode(nodeID string, index uint64) {
 
 	// QUESTION is it dangerous to delete this first?
 	for e := range evals {
-		b.system.Del(e)
+		b.system.Remove(e)
 		b.stats.TotalBlocked--
 	}
 

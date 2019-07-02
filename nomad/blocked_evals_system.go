@@ -40,7 +40,7 @@ func (s *systemEvals) Add(eval *structs.Evaluation, token string) {
 	// if we're displacing the old blocked id for this job+node, delete it first
 	if prevID, ok := s.byJob[jobID][eval.NodeID]; ok {
 		prev, _ := s.Get(prevID)
-		s.Del(prev.eval)
+		s.Remove(prev.eval)
 	}
 
 	// set this eval as the new eval for this job on this node
@@ -52,7 +52,7 @@ func (s *systemEvals) Get(evalID string) (*wrappedEval, bool) {
 	return w, ok
 }
 
-func (s *systemEvals) Del(eval *structs.Evaluation) {
+func (s *systemEvals) Remove(eval *structs.Evaluation) {
 	// delete the job index if this eval is the currently listed blocked eval
 	jobID := structs.NewNamespacedID(eval.JobID, eval.Namespace)
 	e, ok := s.byJob[jobID][eval.NodeID]
