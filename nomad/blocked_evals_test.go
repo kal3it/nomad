@@ -175,14 +175,14 @@ func TestBlockedEvals_UnblockEscaped(t *testing.T) {
 	}
 
 	blocked.Unblock("v1:123", 1000)
-	waitBrokerEnqueued(t, blocked, broker)
+	requireBlockedEvalsEnqueued(t, blocked, broker, 1)
 }
 
-func waitBrokerEnqueued(t *testing.T, blocked *BlockedEvals, broker *EvalBroker) {
+func requireBlockedEvalsEnqueued(t *testing.T, blocked *BlockedEvals, broker *EvalBroker, enqueued int) {
 	testutil.WaitForResult(func() (bool, error) {
 		// Verify Unblock caused an enqueue
 		brokerStats := broker.Stats()
-		if brokerStats.TotalReady != 1 {
+		if brokerStats.TotalReady != enqueued {
 			return false, fmt.Errorf("bad: %#v", brokerStats)
 		}
 
@@ -215,7 +215,7 @@ func TestBlockedEvals_UnblockEligible(t *testing.T) {
 	}
 
 	blocked.Unblock("v1:123", 1000)
-	waitBrokerEnqueued(t, blocked, broker)
+	requireBlockedEvalsEnqueued(t, blocked, broker, 1)
 }
 
 func TestBlockedEvals_UnblockIneligible(t *testing.T) {
@@ -274,7 +274,7 @@ func TestBlockedEvals_UnblockUnknown(t *testing.T) {
 
 	// Should unblock because the eval hasn't seen this node class.
 	blocked.Unblock("v1:789", 1000)
-	waitBrokerEnqueued(t, blocked, broker)
+	requireBlockedEvalsEnqueued(t, blocked, broker, 1)
 }
 
 func TestBlockedEvals_UnblockEligible_Quota(t *testing.T) {
@@ -294,7 +294,7 @@ func TestBlockedEvals_UnblockEligible_Quota(t *testing.T) {
 	}
 
 	blocked.UnblockQuota("foo", 1000)
-	waitBrokerEnqueued(t, blocked, broker)
+	requireBlockedEvalsEnqueued(t, blocked, broker, 1)
 }
 
 func TestBlockedEvals_UnblockIneligible_Quota(t *testing.T) {
@@ -372,7 +372,7 @@ func TestBlockedEvals_Reblock(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	waitBrokerEnqueued(t, blocked, broker)
+	requireBlockedEvalsEnqueued(t, blocked, broker, 1)
 }
 
 // Test the block case in which the eval should be immediately unblocked since
@@ -398,7 +398,7 @@ func TestBlockedEvals_Block_ImmediateUnblock_Escaped(t *testing.T) {
 		t.Fatalf("bad: %#v", blockedStats)
 	}
 
-	waitBrokerEnqueued(t, blocked, broker)
+	requireBlockedEvalsEnqueued(t, blocked, broker, 1)
 }
 
 // Test the block case in which the eval should be immediately unblocked since
@@ -425,7 +425,7 @@ func TestBlockedEvals_Block_ImmediateUnblock_UnseenClass_After(t *testing.T) {
 		t.Fatalf("bad: %#v", blockedStats)
 	}
 
-	waitBrokerEnqueued(t, blocked, broker)
+	requireBlockedEvalsEnqueued(t, blocked, broker, 1)
 }
 
 // Test the block case in which the eval should not immediately unblock since
@@ -476,7 +476,7 @@ func TestBlockedEvals_Block_ImmediateUnblock_SeenClass(t *testing.T) {
 		t.Fatalf("bad: %#v", blockedStats)
 	}
 
-	waitBrokerEnqueued(t, blocked, broker)
+	requireBlockedEvalsEnqueued(t, blocked, broker, 1)
 }
 
 // Test the block case in which the eval should be immediately unblocked since
@@ -502,7 +502,7 @@ func TestBlockedEvals_Block_ImmediateUnblock_Quota(t *testing.T) {
 		t.Fatalf("bad: %#v", bs)
 	}
 
-	waitBrokerEnqueued(t, blocked, broker)
+	requireBlockedEvalsEnqueued(t, blocked, broker, 1)
 }
 
 func TestBlockedEvals_UnblockFailed(t *testing.T) {
@@ -537,16 +537,7 @@ func TestBlockedEvals_UnblockFailed(t *testing.T) {
 		t.Fatalf("bad: %#v", bs)
 	}
 
-	testutil.WaitForResult(func() (bool, error) {
-		// Verify Unblock caused an enqueue
-		brokerStats := broker.Stats()
-		if brokerStats.TotalReady != 3 {
-			return false, fmt.Errorf("bad: %#v", brokerStats)
-		}
-		return true, nil
-	}, func(err error) {
-		t.Fatalf("err: %s", err)
-	})
+	requireBlockedEvalsEnqueued(t, blocked, broker, 3)
 
 	// Reblock an eval for the same job and check that it gets tracked.
 	blocked.Block(e)
@@ -624,9 +615,9 @@ func TestBlockedEvals_UnblockNode(t *testing.T) {
 	require.Equal(t, 1, bs.TotalBlocked)
 
 	blocked.UnblockNode("foo", 1000)
-	waitBrokerEnqueued(t, blocked, broker)
+	requireBlockedEvalsEnqueued(t, blocked, broker, 1)
 	bs = blocked.Stats()
-	require.Empty(t, blocked.system.node)
+	require.Empty(t, blocked.system.byNode)
 	require.Equal(t, 0, bs.TotalBlocked)
 }
 
